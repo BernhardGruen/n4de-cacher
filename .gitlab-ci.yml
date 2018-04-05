@@ -1,0 +1,21 @@
+variables:
+  DOCKER_VERSION: "17.12.1"
+  VMTOUCH_VERSION: "1.3.0"
+  ALPINE_VERSION: "3.7"
+  REVISION: "r1"
+
+stages:
+  - build
+
+build:
+  stage: build
+  image: docker:${DOCKER_VERSION}
+  before_script:
+    - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+  script:
+    - docker build
+      --build-arg ALPINE_VERSION="${ALPINE_VERSION}"
+      -t $CI_REGISTRY_IMAGE:${VMTOUCH_VERSION}-${REVISION}
+      .
+    - docker tag $CI_REGISTRY_IMAGE:${VMTOUCH_VERSION}-${REVISION} $CI_REGISTRY_IMAGE:latest
+    - docker push $CI_REGISTRY_IMAGE
