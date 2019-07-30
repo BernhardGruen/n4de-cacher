@@ -1,22 +1,37 @@
 variables:
-  DOCKER_VERSION: "18.03.1"
+  DOCKER_VERSION: "18.09.7"
   VMTOUCH_VERSION: "1.3.1"
-  ALPINE_VERSION: "3.9"
-  REVISION: "r1"
+  ALPINE_VERSION: "3.10"
+  REVISION: "r0"
 
 stages:
-  - build
-
-build:
-  stage: build
+  - docker
+  - docker-tag
+  
+docker-cacher:
+  stage: docker
   image: docker:${DOCKER_VERSION}
-  before_script:
-    - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
+    - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin # An GitLab-Registry anmelden
     - docker build
       --pull
       --build-arg ALPINE_VERSION="${ALPINE_VERSION}"
-      -t $CI_REGISTRY_IMAGE:${VMTOUCH_VERSION}-${REVISION}
-      .
-    - docker tag $CI_REGISTRY_IMAGE:${VMTOUCH_VERSION}-${REVISION} $CI_REGISTRY_IMAGE:latest
+      -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+      .                                                           # Docker Image bauen
+    - docker push $CI_REGISTRY_IMAGE                              # Image in GitLab-Docker-Registry pushen
+    - docker image rm $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+
+docker-tag-latest:
+  stage: docker-tag
+  image: docker:${DOCKER_VERSION}
+  script:
+    - echo "$CI_JOB_TOKEN" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+    - docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME $CI_REGISTRY_IMAGE:latest
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME $CI_REGISTRY_IMAGE:${ALPINE_VERSION}-${VMTOUCH_VERSION}-${REVISION}
     - docker push $CI_REGISTRY_IMAGE
+    - docker image rm $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+    - docker image rm $CI_REGISTRY_IMAGE:${ALPINE_VERSION}-${VMTOUCH_VERSION}-${REVISION}
+    - docker image rm $CI_REGISTRY_IMAGE:latest
+  only:
+    - master
