@@ -10,9 +10,11 @@ Zu cachendes Volume als Volume (auch mit Schreibschutz) mit Ziel `/data` angeben
 
 ```yaml
 cacher:
-    image: 'registry.n4group.eu/n4de/cacher:latest'
+    image: registry.n4group.eu/n4de/cacher:latest
     deploy:
       replicas: 0
+        restart_policy:
+          condition: none
     volumes:
       - <VOLUME>:/data:ro
 ```
